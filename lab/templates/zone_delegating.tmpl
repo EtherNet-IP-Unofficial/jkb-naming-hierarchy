@@ -1,0 +1,6 @@
+zone "$zone" {
+    type master; file "$db";
+    update-policy {
+$grants
+    };
+};

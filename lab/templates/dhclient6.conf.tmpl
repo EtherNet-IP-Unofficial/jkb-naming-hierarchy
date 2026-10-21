@@ -1,0 +1,9 @@
+# The device knows only its label ($label). It sends a PARTIAL DHCPv6 Client-FQDN (a single
+# label, no DNS root terminator) so the machine's Kea appends ddns-qualifying-suffix and forms
+# the full name itself. We write the option bytes directly:
+#   flags(0x01 = "server performs the update") + label-length + label
+# ISC dhclient's fqdn.fqdn helper always root-terminates a v6 name (fqdn_encode() in
+# common/options.c), which Kea reads as already-qualified; supplying the raw dhcp6.fqdn value
+# bypasses that encoder (option 39 is a straight 'E' encapsulation).
+send dhcp6.fqdn = concat(encode-int(1, 8), encode-int($labellen, 8), "$label");
+request dhcp6.name-servers, dhcp6.domain-search;

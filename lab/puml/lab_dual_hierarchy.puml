@@ -1,0 +1,38 @@
+@startuml lab_dual_hierarchy
+' The two congruent trees that make the design work: prefixes (PD) and names (DNS).
+' Render:  plantuml lab_dual_hierarchy.puml
+title Two congruent hierarchies — prefix delegation mirrors DNS delegation
+
+skinparam shadowing false
+skinparam ranksep 26
+
+package "Addressing hierarchy (DHCPv6-PD)" #EEF6FF {
+  rectangle "plant  /48\nfd12:3456:789a::/48" as AP
+  rectangle "line3  /56\nfd12:3456:789a:0300::/56" as AL
+  rectangle "cellA  /64\nfd12:3456:789a:0301::/64" as AA
+  rectangle "cellB  /64\nfd12:3456:789a:0302::/64" as AB
+  AP -down-> AL : IA_PD delegated-len 56
+  AL -down-> AA : IA_PD delegated-len 64
+  AL -down-> AB : IA_PD delegated-len 64
+}
+
+package "Naming hierarchy (delegated DNS zones)" #FFF7EE {
+  rectangle "plant.acme.internal" as NP
+  rectangle "line3.plant.acme.internal" as NL
+  rectangle "cellA.line3.plant.acme.internal" as NA
+  rectangle "cellB.line3.plant.acme.internal" as NB
+  NP -down-> NL : NS delegation
+  NL -down-> NA : NS delegation
+  NL -down-> NB : NS delegation
+}
+
+AP .right.> NP : same node
+AL .right.> NL
+AA .right.> NA
+AB .right.> NB
+
+note bottom
+  The prefix tree and the zone tree are **structurally identical**.
+  A device's address encodes its position; its FQDN spells the same position.
+end note
+@enduml

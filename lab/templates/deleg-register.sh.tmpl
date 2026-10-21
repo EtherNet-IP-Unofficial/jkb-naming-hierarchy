@@ -1,0 +1,48 @@
+#!/bin/sh
+# This router/machine knows only its label ($label). It learns its PARENT domain from the DHCPv6
+# domain-search option the parent's Kea sent during prefix delegation (odhcp6c's PD hook wrote it
+# to $outdir/<iface>.domain), then registers its OWN delegation (NS + glue) into the parent zone
+# with a TSIG-signed DNS UPDATE. Nothing about this delegation is pre-written in the parent's zone
+# file — the child creates it at runtime, per its own simple name.
+label="$label"
+key="$key"
+
+up_if=$$(ip -6 route show default 2>/dev/null | awk '{print $$5; exit}')
+[ -z "$$up_if" ] && up_if="$up_if"
+gw=$$(ip -6 route show default 2>/dev/null | awk '{print $$3; exit}')
+glue=$$(ip -6 -o addr show dev "$$up_if" scope global 2>/dev/null | awk '{print $$4}' | cut -d/ -f1 | head -n1)
+
+domain=""
+_i=0
+while [ $$_i -lt 15 ]; do
+    domain=$$(head -n1 "$outdir/$$up_if.domain" 2>/dev/null | awk '{print $$1}' | sed 's/\.$$//')
+    [ -n "$$domain" ] && break
+    _i=$$((_i + 1)); sleep 1
+done
+
+if [ -z "$$domain" ]; then
+    echo "deleg-register: no domain-search learned from PD; cannot self-delegate '$$label'"
+    exit 1
+fi
+
+name="$$label.$$domain"
+echo "deleg-register: $$name  NS ns.$$name  (glue $$glue) -> server $$gw  zone $$domain"
+
+_i=0
+while [ $$_i -lt 10 ]; do
+    if nsupdate -k "$$key" <<EOF
+server $$gw
+zone $$domain
+update add $$name.    300 NS   ns.$$name.
+update add ns.$$name. 300 AAAA $$glue
+send
+EOF
+    then
+        echo "deleg-register: parent accepted delegation of $$name"
+        exit 0
+    fi
+    _i=$$((_i + 1)); sleep 2
+done
+
+echo "deleg-register: nsupdate failed for $$name"
+exit 1

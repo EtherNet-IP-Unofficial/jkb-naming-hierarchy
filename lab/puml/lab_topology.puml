@@ -1,0 +1,39 @@
+@startuml lab_topology
+' Physical view of the virtual lab: namespaces ("boxes") joined by veth pairs ("wires").
+' Render:  plantuml lab_topology.puml   ->  lab_topology.png
+title Virtual plant on one Linux box — namespaces + veth wiring
+
+skinparam nodesep 12
+skinparam ranksep 30
+skinparam shadowing false
+skinparam rectangle {
+  BackgroundColor #F7FBFF
+  BorderColor #2C6BB3
+  RoundCorner 12
+}
+legend top left
+  Each rectangle = one **network namespace** (an isolated network stack).
+  Each line = one **veth pair** (a virtual cable).  ::1 = upper end, ::2 = lower end.
+endlegend
+
+rectangle "ns: **plant**  (/48 root)\n----\nKea DHCPv6-PD (delegates /56)\nBIND9  plant.acme.internal\nlldpd" as PLANT
+
+rectangle "ns: **line3**  (/56)\n----\nodhcp6c  (pulls /56 upstream)\nKea DHCPv6-PD (delegates /64)\nBIND9  line3.plant.acme.internal\nlldpd" as LINE
+
+rectangle "ns: **cellA**  (/64)\n----\nodhcp6c (pulls /64)\nradvd (Managed flag)\nKea DHCPv6 + Kea-D2 (DDNS/TSIG)\nBIND9  cellA.line3... (+reverse)\nlldpd" as CELLA
+
+rectangle "ns: **cellB**  (/64)\n----\n(same role as cellA,\nno device attached)" as CELLB
+
+rectangle "ns: **vfd2**  (leaf)\n----\ndhclient -6  (FQDN option 39 = vfd2)\navahi-daemon (mDNS)" as VFD2
+
+PLANT -down-> LINE  : veth pl-l3 <-> l3-up\nfd12:3456:789a:ff03::/64
+LINE  -down-> CELLA : veth l3-cellA <-> up-cellA\nfd12:3456:789a:03ff::/64
+LINE  -down-> CELLB : veth l3-cellB <-> up-cellB\nfd12:3456:789a:03fe::/64
+CELLA -down-> VFD2  : veth lf-cellA <-> eth0\nfd12:3456:789a:0301::/64 (leaf link)
+
+note right of VFD2
+  vfd2 ends up with:
+  addr   fd12:3456:789a:0301::1xx
+  FQDN   vfd2.cellA.line3.plant.acme.internal
+end note
+@enduml

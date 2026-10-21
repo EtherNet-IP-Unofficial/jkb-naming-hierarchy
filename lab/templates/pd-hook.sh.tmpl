@@ -1,0 +1,6 @@
+#!/bin/sh
+[ -n "$$PREFIXES" ] && echo "$$(date +%T) $$1 $$2 $$PREFIXES" >> "$outdir/$${1}.pdlog"
+# Parent's Kea sends its zone as the DHCPv6 domain-search option; record it so this tier can
+# learn its parent domain and self-delegate without any extra RA/rdisc6.
+[ -n "$$DOMAINS" ] && printf '%s\n' "$$DOMAINS" > "$outdir/$${1}.domain"
+exit 0

@@ -1,0 +1,25 @@
+#!/bin/sh
+# This tier publishes its own name (its zone apex) into its OWN dynamic zone with a TSIG-signed
+# DNS UPDATE — the same "ask for your record" mechanism the leaf devices use, applied to the
+# intermediate tiers so they are reachable by name in the hierarchy. The zone's update-policy
+# grants this key only the apex AAAA.
+zone="$zone"
+addr="$addr"
+key="$key"
+_i=0
+while [ $$_i -lt 10 ]; do
+    if nsupdate -k "$$key" <<EOF
+server ::1
+zone $$zone
+update delete $$zone. AAAA
+update add $$zone. 300 AAAA $$addr
+send
+EOF
+    then
+        echo "apex-register: published $$zone AAAA $$addr"
+        exit 0
+    fi
+    _i=$$((_i + 1)); sleep 1
+done
+echo "apex-register: nsupdate failed for $$zone"
+exit 1

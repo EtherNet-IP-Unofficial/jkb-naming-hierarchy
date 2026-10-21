@@ -1,0 +1,36 @@
+@startuml lab_onboarding
+' Time-ordered view: what actually happens when vfd2 is plugged into cellA.
+' Render:  plantuml lab_onboarding.puml
+title Leaf onboarding flow — from "vfd2" to a routed, named device
+
+autonumber
+skinparam sequenceMessageAlign center
+skinparam shadowing false
+
+participant "vfd2\n(dhclient -6)" as DEV
+participant "cellA radvd" as RA
+participant "cellA Kea DHCPv6" as KEA
+participant "cellA Kea-D2\n(DDNS writer)" as D2
+participant "cellA BIND9\n(authoritative)" as DNS
+participant "line3 Kea\n(PD upstream)" as LINE
+
+== Address block already delegated (cascaded PD) ==
+LINE -> KEA : (earlier) IA_PD -> cellA gets fd12:3456:789a:0301::/64
+
+== Leaf appears on the wire ==
+DEV -> DEV : form fe80::, run DAD (RFC 4862)
+RA  -> DEV : Router Advertisement\nManaged=1  => "use DHCPv6"
+DEV -> KEA : SOLICIT (IA_NA, Option 39 FQDN="vfd2", ORO: DNS/domain)
+KEA -> KEA : pick addr from pool ::100-::1ff\nappend ddns-qualifying-suffix
+KEA -> DEV : REPLY  addr fd12:3456:789a:0301::1xx\n+ domain cellA.line3.plant.acme.internal
+KEA -> D2  : NameChangeRequest (add AAAA + PTR for vfd2)
+D2  -> DNS : DNS UPDATE (RFC 2136) signed with TSIG (RFC 8945)
+DNS -> DNS : write AAAA in forward zone\nwrite PTR in ip6.arpa reverse zone
+D2  --> KEA : ack
+
+== Result ==
+note over DEV, DNS
+  vfd2.cellA.line3.plant.acme.internal  <->  fd12:3456:789a:0301::1xx
+  (forward and reverse now answer each other)
+end note
+@enduml

@@ -1,0 +1,11 @@
+zone "$zone" {
+    type master; file "$fwd";
+    update-policy {
+        grant ddns-key zonesub any;
+        grant $selfkey name $zone. AAAA;
+    };
+};
+zone "$reverse" {
+    type master; file "$rev";
+    update-policy { grant ddns-key zonesub any; };
+};

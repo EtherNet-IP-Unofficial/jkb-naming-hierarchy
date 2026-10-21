@@ -1,0 +1,6 @@
+$$TTL 300
+@   IN SOA ns1.$zone. admin.$zone. ( 1 3600 600 86400 300 )
+@   IN NS  ns1.$zone.
+ns1 IN AAAA ${ns1_addr}
+; the apex AAAA (this tier's own name) and child delegations are injected at runtime by
+; signed DNS UPDATE (nsupdate) — nothing below the apex is pre-written here.

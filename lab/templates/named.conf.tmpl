@@ -1,0 +1,5 @@
+${include}options { directory "$directory"; pid-file "$pidfile";
+          session-keyfile "$sessionkey";
+          listen-on { 127.0.0.1; }; listen-on-v6 { any; };
+          recursion no; dnssec-validation no; };
+$zones
